@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		08E0ED87255275EA0006FFB3 /* VideoHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08E0ED86255275EA0006FFB3 /* VideoHelper.swift */; };
 		195684CCA3AE4A579CCECC8553EBC8BB /* UIImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4DC0D1728B9BCC3F9E943CD88CA91756 /* UIImage.swift */; };
 		2D5F8E7AB082026DEB6A8A657267637C /* SlideShowMaker-dummy.m in Sources */ = {isa = PBXBuildFile; fileRef = ADB31272B031B0C376FA1DF3F9AD2D8F /* SlideShowMaker-dummy.m */; };
 		3D72336F9530B904C330A332D4FB4DFD /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 6604A7D69453B4569E4E4827FB9155A9 /* Foundation.framework */; };
@@ -42,6 +43,7 @@
 
 /* Begin PBXFileReference section */
 		0455BCB0AE91B9A2008C51AE612FA7D8 /* Enum.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = Enum.swift; path = SlideShowMaker/Classes/Enum.swift; sourceTree = "<group>"; };
+		08E0ED86255275EA0006FFB3 /* VideoHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoHelper.swift; sourceTree = "<group>"; };
 		13577D07A5A8488A4E303337B42E0902 /* SlideShowMaker.podspec */ = {isa = PBXFileReference; explicitFileType = text.script.ruby; includeInIndex = 1; path = SlideShowMaker.podspec; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.ruby; };
 		15FED5094E0F8640274436A9C4AAF67A /* Pods-SlideShowMaker_Example-resources.sh */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.script.sh; path = "Pods-SlideShowMaker_Example-resources.sh"; sourceTree = "<group>"; };
 		258E7FCC3F06A425CA21E57A71A495FE /* VideoExporter.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = VideoExporter.swift; path = SlideShowMaker/Classes/VideoExporter.swift; sourceTree = "<group>"; };
@@ -140,6 +142,7 @@
 				DE85466E67D1533223E040463627898E /* VideoMaker.swift */,
 				0FDE1FE753759D979640325DFE1CFFD8 /* Pod */,
 				3828F1FE9CECE9AA15718DD494F38025 /* Support Files */,
+				08E0ED86255275EA0006FFB3 /* VideoHelper.swift */,
 			);
 			name = SlideShowMaker;
 			path = ../..;
@@ -336,6 +339,7 @@
 			developmentRegion = English;
 			hasScannedForEncodings = 0;
 			knownRegions = (
+				English,
 				en,
 			);
 			mainGroup = 7DB346D0F39D3F0E887471402A8071AB;
@@ -371,6 +375,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				08E0ED87255275EA0006FFB3 /* VideoHelper.swift in Sources */,
 				47729D763A0E9DB45062BE9C3736C953 /* Constant.swift in Sources */,
 				8D5C9D2375D299E953B6CE33EE2A3F1A /* Enum.swift in Sources */,
 				2D5F8E7AB082026DEB6A8A657267637C /* SlideShowMaker-dummy.m in Sources */,

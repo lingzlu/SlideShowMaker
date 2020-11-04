@@ -7,8 +7,9 @@
 //
 
 import UIKit
-import AVFoundation
 import SlideShowMaker
+import AVKit
+import AVFoundation
 
 class ViewController: UIViewController {
 
@@ -25,29 +26,70 @@ class ViewController: UIViewController {
     
     func makeVideo() {
         
-        let images = [#imageLiteral(resourceName: "img0"), #imageLiteral(resourceName: "img1"), #imageLiteral(resourceName: "img2"), #imageLiteral(resourceName: "img3")]
-        
+        let images = [
+            #imageLiteral(resourceName: "image1"),
+            #imageLiteral(resourceName: "image2"),
+            #imageLiteral(resourceName: "image3"),
+            #imageLiteral(resourceName: "image4"),
+            #imageLiteral(resourceName: "image5"),
+        ]
+
+        var assets: [PhotoAsset] = images.map { .photo($0) }
+
+
+        let livePhotosName = ["livePhoto1",
+                              "livePhoto2",
+                              "livePhoto3",
+                              "livePhoto4",
+                              "livePhoto5",
+                              "livePhoto6"]
+
+        livePhotosName.forEach { fileName in
+            if let videoUrl = Bundle.main.url(forResource: fileName, withExtension: "mov") {
+                let videoAsset = AVURLAsset(url: videoUrl)
+                assets.append(.video(videoAsset))
+            }
+        }
+
         var audio: AVURLAsset?
         var timeRange: CMTimeRange?
-        if let audioURL = Bundle.main.url(forResource: "Sound", withExtension: "mp3") {
+        if let audioURL = Bundle.main.url(forResource: "chill", withExtension: "mp4") {
             audio = AVURLAsset(url: audioURL)
             let audioDuration = CMTime(seconds: 30, preferredTimescale: audio!.duration.timescale)
             timeRange = CMTimeRange(start: kCMTimeZero, duration: audioDuration)
         }
-        
-        // OR: VideoMaker(images: images, movement: ImageMovement.fade)
-        let maker = VideoMaker(images: images, transition: ImageTransition.wipeMixed)
-    
-        maker.contentMode = .scaleAspectFit
-        
-        maker.exportVideo(audio: audio, audioTimeRange: timeRange, completed: { success, videoURL in
-            
-            if let url = videoURL {
+
+        let maker = VideoMaker(assets: assets)
+        maker.makeVideo(audioAsset: audio!) { success, videoUrl in
+            if let url = videoUrl {
                 print(url)  // /Library/Mov/merge.mov
+                self.playVideo(videoUrl: url)
             }
-            
-        }).progress = { progress in
-            print(progress)
+        }
+
+        // OR: VideoMaker(images: images, movement: ImageMovement.fade)
+//        let maker = VideoMaker(assets: assets, movement: ImageMovement.fade)
+//
+//        maker.contentMode = .scaleAspectFill
+
+//        maker.exportVideo(audio: audio, audioTimeRange: timeRange, completed: { success, videoURL in
+//            if let url = videoURL {
+//                print(url)  // /Library/Mov/merge.mov
+//                self.playVideo(videoUrl: url)
+//            }
+//
+//        }).progress = { progress in
+//            print(progress)
+//        }
+    }
+
+    private func playVideo(videoUrl: URL) {
+        let player = AVPlayer(url: videoUrl)
+        let playerViewController = AVPlayerViewController()
+        playerViewController.player = player
+
+        self.present(playerViewController, animated: true) {
+            playerViewController.player!.play()
         }
     }
 }

@@ -7,14 +7,21 @@
 //
 
 import UIKit
+import AVKit
 import AVFoundation
+
+public enum PhotoAsset {
+    case photo(_ image: UIImage)
+    case video(_ asset: AVAsset)
+}
 
 public class VideoMaker: NSObject {
     
     public typealias CompletedCombineBlock = (_ success: Bool, _ videoURL: URL?) -> Void
     public typealias Progress = (_ progress: Float) -> Void
 
-    public var images: [UIImage?] = []
+    public var assets: [PhotoAsset] = []
+    
     public var transition: ImageTransition = .none
     public var movement: ImageMovement = .none
     public var movementFade: MovementFade = .upLeft
@@ -25,7 +32,7 @@ public class VideoMaker: NSObject {
     public var quarity = CGInterpolationQuality.low
     
     // Video resolution
-    public var size = CGSize(width: 640, height: 640)
+    public var size = CGSize(width: 1920, height: 1080)
     
     public var definition: CGFloat = 1
     
@@ -65,25 +72,78 @@ public class VideoMaker: NSObject {
             self.progress?(self.currentProgress)
         }
     }
-    
-    public override init() {
-        super.init()
+
+    fileprivate var imageAssets: [UIImage?] = []
+
+    public convenience init(assets: [PhotoAsset]) {
+        self.init()
+
+        self.assets = assets
+        self.isMovement = false
     }
-    
-    public convenience init(images: [UIImage?], transition: ImageTransition) {
+
+    public convenience init(assets: [PhotoAsset], transition: ImageTransition) {
         self.init()
         
-        self.images = images
+        self.assets = assets
         self.transition = transition
         self.isMovement = false
     }
     
-    public convenience init(images: [UIImage?], movement: ImageMovement) {
+    public convenience init(assets: [PhotoAsset], movement: ImageMovement) {
         self.init()
         
-        self.images = images
+        self.assets = assets
         self.movement = movement
         self.isMovement = true
+    }
+
+    public func makeVideo(audioAsset: AVAsset?, completion: @escaping CompletedCombineBlock) {
+        guard !assets.isEmpty else {
+            completion(false, nil)
+            return
+        }
+
+        let composition = AVMutableComposition()
+        var currentTime: CMTime = kCMTimeZero
+        var compositionInstructions: [AVMutableVideoCompositionInstruction] = []
+
+        for asset in assets {
+            switch asset {
+            case .photo(let image):
+                continue
+
+            case .video(let asset):
+                guard let assetTrack = asset.tracks.first else {
+                    continue
+                }
+
+                let instruction = VideoHelper.videoCompositionInstruction(track: assetTrack, asset: asset, time: currentTime, duration: assetTrack.timeRange.duration)
+                compositionInstructions.append(instruction)
+
+                do {
+                    let timeRange = CMTimeRangeMake(kCMTimeZero, assetTrack.timeRange.duration)
+                    // Insert video to Mutable Composition at right time.
+                    try composition.insertTimeRange(timeRange, of: asset, at: currentTime)
+                    currentTime = CMTimeAdd(currentTime, assetTrack.timeRange.duration)
+                } catch let error {
+                    print(error)
+                    completion(false, nil)
+                }
+            }
+        }
+
+        let videoItem = VideoItem(video: composition, audio: audioAsset)
+        let videoExporter = VideoExporter(withe: videoItem)
+        videoExporter.export()
+
+        videoExporter.exportingBlock = { exportCompleted, progress, videoURL, error in
+
+            DispatchQueue.main.async {
+//                self.currentProgress = exportCompleted ? 1 : timeRate + (progress ?? 1) * self.exportTimeRate
+                completion(exportCompleted, videoURL)
+            }
+        }
     }
     
     public func exportVideo(audio: AVURLAsset?, audioTimeRange: CMTimeRange?, completed: @escaping CompletedCombineBlock) -> VideoMaker {
@@ -117,12 +177,12 @@ public class VideoMaker: NSObject {
     }
     
     fileprivate func calculateTime() {
-        guard self.images.isEmpty == false else { return }
+        guard self.assets.isEmpty == false else { return }
         
         let isFadeLong = self.transition == .crossFadeLong
         let hasSetDuration = self.videoDuration != nil
         self.timescale = hasSetDuration ? 100000 : 1
-        let average = hasSetDuration ? Int(self.videoDuration! * self.timescale / self.images.count) : 2
+        let average = hasSetDuration ? Int(self.videoDuration! * self.timescale / self.assets.count) : 2
         
         if self.isMovement {
             self.frameDuration = 0
@@ -140,34 +200,37 @@ public class VideoMaker: NSObject {
         self.transitionRate = self.transitionRate == 0 ? 1 : self.transitionRate
         
         if hasSetDuration == false {
-            self.videoDuration = self.frameDuration * self.timescale * self.images.count
+            self.videoDuration = self.frameDuration * self.timescale * self.assets.count
         }
         
         self.calculatorTimeRate()
     }
     
     fileprivate func makeImageFit() {
-        var newImages = [UIImage?]()
-        for image in self.images {
-            if let image = image {
-                
-                let size = CGSize(width: self.size.width * definition, height: self.size.height * definition)
-                
-                let viewSize = self.isMovement && self.movement == .fade
-                    ? CGSize(width: size.width + self.fadeOffset, height: size.height + self.fadeOffset)
-                    : size
-                let view = UIView(frame: CGRect(origin: .zero, size: viewSize))
-                view.backgroundColor = UIColor.black
-                let imageView = UIImageView(image: image)
-                imageView.contentMode = self.contentMode
-                imageView.backgroundColor = UIColor.black
-                imageView.frame = view.bounds
-                view.addSubview(imageView)
-                let newImage = UIImage(view: view)
-                newImages.append(newImage)
+        var processImages = [UIImage]()
+
+        for asset in self.assets {
+            guard case .photo(let image) = asset else {
+                continue
             }
+
+            let size = CGSize(width: self.size.width * definition, height: self.size.height * definition)
+
+            let viewSize = self.isMovement && self.movement == .fade
+                ? CGSize(width: size.width + self.fadeOffset, height: size.height + self.fadeOffset)
+                : size
+            let view = UIView(frame: CGRect(origin: .zero, size: viewSize))
+            view.backgroundColor = UIColor.black
+            let imageView = UIImageView(image: image)
+            imageView.contentMode = self.contentMode
+            imageView.backgroundColor = UIColor.black
+            imageView.frame = view.bounds
+            view.addSubview(imageView)
+            let newImage = UIImage(view: view)
+            processImages.append(newImage)
         }
-        self.images = newImages
+
+        self.imageAssets = processImages
     }
     
     fileprivate func combineVideo(completed: CompletedCombineBlock?) {
@@ -187,7 +250,7 @@ public class VideoMaker: NSObject {
     }
     
     fileprivate func makeMovementVideo(movement: ImageMovement, completed: CompletedCombineBlock?) {
-        guard self.images.isEmpty == false else {
+        guard self.assets.isEmpty == false else {
             completed?(false, nil)
             return
         }
@@ -212,8 +275,8 @@ public class VideoMaker: NSObject {
         // input
         let videoSettings = [
             AVVideoCodecKey: AVVideoCodecH264,
-            AVVideoWidthKey: self.size.width,
-            AVVideoHeightKey: self.size.height
+            AVVideoWidthKey: UIScreen.main.bounds.width,
+            AVVideoHeightKey: UIScreen.main.bounds.height
             ] as [String : Any]
         
         let writerInput = AVAssetWriterInput(mediaType: .video, outputSettings: videoSettings)
@@ -235,7 +298,7 @@ public class VideoMaker: NSObject {
     }
     
     fileprivate func makeTransitionVideo(transition: ImageTransition, completed: CompletedCombineBlock?) {
-        guard self.images.isEmpty == false else {
+        guard self.assets.isEmpty == false else {
             completed?(false, nil)
             return
         }
@@ -305,35 +368,42 @@ public class VideoMaker: NSObject {
         
         writerInput.requestMediaDataWhenReady(on: self.mediaInputQueue) { 
             while true {
-                if i >= self.images.count {
+                if i >= self.assets.count {
                     break
                 }
                 
                 let duration = self.isMovement ? self.transitionDuration : self.frameDuration
                 presentTime = CMTimeMake(Int64(i * duration), Int32(self.timescale))
-                
-                let presentImage = self.images[i]
-                let nextImage: UIImage? = self.images.count > 1 && i != self.images.count - 1 ? self.images[i + 1] : nil
-                
-                presentTime = self.isMovement
-                    ? self.appendMovementBuffer(
-                        at: i,
-                        presentImage: presentImage,
-                        nextImage: nextImage,
-                        time: presentTime,
-                        writerInput: writerInput,
-                        bufferAdapter: bufferAdapter
-                    )
-                    : self.appendTransitionBuffer(
-                        at: i,
-                        presentImage: presentImage,
-                        nextImage: nextImage,
-                        time: presentTime,
-                        writerInput: writerInput,
-                        bufferAdapter: bufferAdapter
-                    )
-                
-                self.images[i] = nil
+
+                switch self.assets[i] {
+                case .photo(let image):
+                    let presentImage = self.imageAssets[i]
+                    let nextImage: UIImage? = self.imageAssets.count > 1 && i != self.imageAssets.count - 1 ? self.imageAssets[i + 1] : nil
+
+                    if self.isMovement {
+                        presentTime = self.appendMovementBuffer(
+                            at: i,
+                            presentImage: presentImage,
+                            nextImage: nextImage,
+                            time: presentTime,
+                            writerInput: writerInput,
+                            bufferAdapter: bufferAdapter
+                        )
+                    } else {
+                        presentTime = self.appendTransitionBuffer(
+                            at: i,
+                            presentImage: presentImage,
+                            nextImage: nextImage,
+                            time: presentTime,
+                            writerInput: writerInput,
+                            bufferAdapter: bufferAdapter
+                        )
+                    }
+                case .video(let asset):
+                    print(asset)
+                }
+
+
                 i += 1
                 self.changeNextIfNeeded()
             }
@@ -372,7 +442,7 @@ public class VideoMaker: NSObject {
                 let transitionTime = CMTimeMake(Int64(self.transitionDuration), Int32(self.transitionFrameCount * self.timescale))
                 presentTime = CMTimeAdd(presentTime, CMTimeMake(Int64(self.frameDuration - self.transitionDuration), Int32(self.timescale)))
                 
-                if position + 1 < self.images.count {
+                if position + 1 < self.imageAssets.count {
                     if self.transition != .none {
                         let framesToTransitionCount = self.transitionFrameCount - self.framesToWaitBeforeTransition
                         
@@ -989,9 +1059,9 @@ public class VideoMaker: NSObject {
     }
     
     fileprivate func calculatorTimeRate() {
-        if self.images.isEmpty == false {
+        if self.imageAssets.isEmpty == false {
             self.exportTimeRate = 1 - self.writerTimeRate
-            let frameTimeRate = self.writerTimeRate / Float(self.images.count)
+            let frameTimeRate = self.writerTimeRate / Float(self.imageAssets.count)
             self.waitTranstionTimeRate = self.isMovement ? 0 : frameTimeRate * 0.2
             self.transitionTimeRate = frameTimeRate - self.waitTranstionTimeRate
         }
